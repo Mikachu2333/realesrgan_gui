@@ -1,0 +1,103 @@
+import win.ui
+import fonts
+import fsys.dlg
+import thread.manage
+fonts.addFamily(io.appData("AI_Improve\梦源黑体 CN W9.ttf"))
+/*DSG{{*/
+var Imp_Files = win.form(cls="AI_IMPROVE_FORM";text="多文件处理";right=545;bottom=403;border="dialog frame";max=false)
+Imp_Files.add(
+Intro={cls="static";text="anime用于动漫
+另一个用于其他";left=390;top=294;right=506;bottom=336;align="center";font=LOGFONT(h=-13;name='梦源黑体 CN W9';weight=420);transparent=1;z=8};
+Start_files={cls="button";text="开始";left=442;top=348;right=538;bottom=388;disabled=1;font=LOGFONT(h=-19;name='梦源黑体 CN W9';weight=420);z=3};
+add_files={cls="button";text="添加文件";left=332;top=348;right=428;bottom=388;default=1;font=LOGFONT(h=-19;name='梦源黑体 CN W9';weight=420);z=4};
+edit={cls="edit";left=12;top=10;right=532;bottom=286;edge=1;font=LOGFONT(h=-14;name='梦源黑体 CN W9';weight=420);hscroll=1;multiline=1;vscroll=1;z=7};
+edit_path={cls="edit";text="可手动更改但路径必须存在";left=8;top=340;right=218;bottom=392;edge=1;font=LOGFONT(h=-16;name='梦源黑体 CN W9';weight=420);hscroll=1;multiline=1;z=1};
+mood={cls="combobox";left=146;top=302;right=371;bottom=328;edge=1;font=LOGFONT(h=-16;name='梦源黑体 CN W9';weight=420);items={"realesrgan-x4plus-anime";"realesrgan-x4plus"};mode="dropdown";z=5};
+path_choose={cls="button";text="选择路径";left=224;top=348;right=320;bottom=388;font=LOGFONT(h=-19;name='梦源黑体 CN W9';weight=420);z=2};
+static={cls="static";text="优化模式：";left=44;top=298;right=135;bottom=329;align="center";center=1;font=LOGFONT(h=-16;name='梦源黑体 CN W9';weight=420);transparent=1;z=6}
+)
+/*}}*/
+
+Imp_Files.edit.text =/*请先选择路径再添加文件
+
+本程序不检查输入路径是否合法*/
+var res_path = io.joinpath(io._exedir,"realesrgan-ncnn-vulkan\realesrgan-ncnn-vulkan.exe")
+get_dir = function(){
+	dir_path = fsys.dlg.opendir()
+	if(dir_path == null){
+		if(win.msgboxTimeout("未获取到路径，是否重试？","Error",2500,4) == 6){
+			get_dir()
+		} else {
+			win.msgbox("必须获取路径或手动输入，
+若因路径错误导致篡改其他文件概不负责！")
+			return "可手动更改但路径必须存在"
+		}
+	} else {
+		return dir_path
+	}
+}
+
+Imp_Files.path_choose.oncommand = function(id,event){
+	Imp_Files.edit_path.text = null
+	var temp = get_dir()
+	Imp_Files.edit_path.text = temp
+	Imp_Files.add_files.disabled = false
+}
+
+Imp_Files.Start_files.oncommand = function(id,event){
+	Imp_Files.edit.readonly = true
+	Imp_Files.add_files.disabled = true
+	Imp_Files.Start_files.disabled = true
+	if(Imp_Files.edit.text != "" and Imp_Files.edit_path.text != "" and Imp_Files.edit_path.text != "可手动更改但路径必须存在"){
+		var thrd = thread.create(
+			function(Imp_Files,res_path){
+			import process
+			import win
+			import win.ui
+			for(m in (string.lines(Imp_Files.edit.text))){
+				if(m != "" and m != " "){
+					var s_path = io.splitpath(m)
+					if(Imp_Files.mood.text = "realesrgan-x4plus-anime"){
+						var info = "-i """ + m + """ -o """ + io.joinpath(Imp_Files.edit_path.text,s_path.name + "_out.png") + """ -n realesrgan-x4plus-anime"
+						var prcs = process(res_path,info)
+						while(prcs.wait() == true){break}
+					} else {
+						var info = "-i """ + m + """ -o """ + io.joinpath(Imp_Files.edit_path.text,s_path.name + "_out.png") + """ -n realesrgan-x4plus"
+						var prcs = process(res_path,info)
+						while(prcs.wait() == true){break}
+					}
+				}
+			}
+			Imp_Files.edit.readonly = false
+			Imp_Files.add_files.disabled = false
+			Imp_Files.path_choose.disabled = false
+			Imp_Files.Start_files.disabled = false
+		},Imp_Files,res_path
+		)
+	}
+}
+
+Imp_Files.add_files.oncommand = function(id,event){
+	Imp_Files.add_files.disabled = true
+	Imp_Files.edit.text = null
+	Imp_Files.Start_files.disabled = false
+
+	var temp = fsys.dlg.openEx("图片文件|*.jpg;*.png;*.jpeg|","选择文件",,Imp_Files.hwnd)
+	if((temp == null) or (temp[1] == null)){
+		win.msgbox("请手动输入文件路径【每行一个】
+本程序不负责检查输入的路径是否合法","Notice",,Imp_Files.hwnd)
+	} else {
+		for(i,j in temp){
+			Imp_Files.edit.print(j)
+		}
+	}
+	Imp_Files.add_files.disabled = false
+}
+
+Imp_Files.onDestroy = function(){
+    mainForm.show(true)
+}
+
+Imp_Files.show()
+win.loopMessage()
+return Imp_Files
